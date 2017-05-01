@@ -1,0 +1,13 @@
+/obj
+*.exe
+*.dll
+*.zip
+*.usbeecomp
+*.o
+*.i
+*.s
+*.d
+*.mpg
+/bin
+
+
