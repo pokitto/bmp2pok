@@ -11,6 +11,7 @@ int main(int argc, char * argv[])
 {
     BITMAPFILEHEADER bf;
     BITMAPINFO bmi;
+    RGBQUAD myColors[256]; // needed because size of bmi.bmiColors is defined as 1 in wingdi.h !!!
 
     FILE *infile, *outfile;
     DWORD bytes_read = 0, bmpsize, fillindex, nextlinei, linei, i, offset;
@@ -24,7 +25,7 @@ int main(int argc, char * argv[])
 	char ufile[_MAX_FNAME];
     char ext[_MAX_EXT];
     char of_name[_MAX_FNAME+_MAX_EXT];
-    char *databuffer;
+    unsigned char *databuffer;
 
 
 	printf("Pokitto BMP to Pokitto bitmap conversion utility\n");
@@ -120,26 +121,29 @@ int main(int argc, char * argv[])
     if (fread(&bmi,sizeof(bmi.bmiHeader),1,infile) == 1)
     {
         int c = bmi.bmiHeader.biClrUsed;
+        if (c==0) c=256; // from MS BMP specs. 0 means 2^n colors
+        bmi.bmiHeader.biClrUsed = c;
         printf("Number of colours used: %d\n", c);
-        fread(&bmi.bmiColors[0],c*4,1,infile);
+        //fread(&bmi.bmiColors[0],c*4,1,infile);
+        fread(&myColors[0],c*4,1,infile);
         bytes_read += sizeof(bmi.bmiHeader)+c*4;
-        for (int j=0; j<bmi.bmiHeader.biClrUsed; j++) {
+        for (unsigned int j=0; j<bmi.bmiHeader.biClrUsed; j++) {
             printf("Colour: %d",j);
             if (j<10) printf(" ");
             /*R*/
-            c=bmi.bmiColors[j].rgbRed;
+            c=myColors[j].rgbRed;
             printf(" r:%d",c);
             if (c<10) printf("  ");
             else if (c<100) printf(" ");
             printf(" ");
             /*G*/
-            c=bmi.bmiColors[j].rgbGreen;
+            c=myColors[j].rgbGreen;
             printf("g:%d",c);
             if (c<10) printf("  ");
             else if (c<100) printf(" ");
             printf(" ");
             /*B*/
-            c=bmi.bmiColors[j].rgbBlue;
+            c=myColors[j].rgbBlue;
             printf("b:%d",c);
             if (c<10) printf("  ");
             else if (c<100) printf(" ");
@@ -170,7 +174,7 @@ int main(int argc, char * argv[])
             printf("Ignoring %d padding bytes at each line\n", padbytes);
 	}
 
-	databuffer = (char *) malloc(bmpsize);
+	databuffer = (unsigned char *) malloc(bmpsize);
 	if (databuffer == NULL)
 	{
 		printf("Error allocating temporary data buffer, is image too big?\n");
@@ -248,23 +252,23 @@ int main(int argc, char * argv[])
         fprintf(outfile,"const uint16_t ");
         fprintf(outfile,justfile);
         fprintf(outfile,"_pal[] = {\n");
-        int numcol;
+        unsigned int numcol;
         if (use8) { numcol=256;}
         else if (use4) { numcol=16;}
         else if (use2) { numcol=4;}
         if (bmi.bmiHeader.biClrUsed>numcol) {
                 printf("WARNING! \n");
-                printf("Your image has %d different colors.\n",bmi.bmiHeader.biClrUsed);
+                printf("Your image has %d different colors.\n",(int)bmi.bmiHeader.biClrUsed);
                 if (use4) printf("But 4bpp mode only allows 16 different colors in the palette.\n");
                 else if (use2) printf("But 2bpp mode only allows 4 different colors in the palette.\n");
                 printf("The program will automatically IGNORE any colors used above this limit.\n");
         }
         if (numcol>bmi.bmiHeader.biClrUsed) numcol = bmi.bmiHeader.biClrUsed;
-        for (int c=0;c<numcol;c++) {
+        for (unsigned int c=0;c<numcol;c++) {
             unsigned int r,g,b,o;
-            r = bmi.bmiColors[c].rgbRed >> 3; // 5 bits
-            g = bmi.bmiColors[c].rgbGreen >> 2; // 6 bits
-            b = bmi.bmiColors[c].rgbBlue >> 3; // 5 bits
+            r = myColors[c].rgbRed >> 3; // 5 bits
+            g = myColors[c].rgbGreen >> 2; // 6 bits
+            b = myColors[c].rgbBlue >> 3; // 5 bits
             o = (r<<11)|(g<<5)|b;
             fprintf(outfile,"%d",o);
             if(c<numcol-1) fprintf(outfile,",");
@@ -274,7 +278,7 @@ int main(int argc, char * argv[])
 		/* Image data */
         fprintf(outfile, "const uint8_t ");
         fprintf(outfile,justfile);
-        fprintf(outfile,"[] = {\n%d,%d,\n",bmi.bmiHeader.biWidth,bmi.bmiHeader.biHeight);
+        fprintf(outfile,"[] = {\n%d,%d,\n",(int)bmi.bmiHeader.biWidth,(int)bmi.bmiHeader.biHeight);
 
 	fillindex = 0;
 	i = 0;
@@ -292,14 +296,14 @@ int main(int argc, char * argv[])
 
 		/** OUTPUT DATA tO FILE **/
 
-        int temp=fillindex;
+        unsigned int temp=fillindex;
         if (use8) {
-            if (databuffer[offset]<10) fprintf (outfile, "0%d", databuffer[offset]);
+            if (databuffer[offset]<10) fprintf (outfile, "0%d", (unsigned char)databuffer[offset]);
             else fprintf (outfile, "%d", databuffer[offset]);
             fillindex++;
         } else if (use4) {
             if (bitcounter) {
-                    fprintf (outfile, "%d", (prevvalue[0]<<4 | databuffer[offset]));
+                    fprintf (outfile, "%d", (unsigned char)(prevvalue[0]<<4 | databuffer[offset]));
                     fillindex++;
             } else {
                     prevvalue[0] = databuffer[offset];
