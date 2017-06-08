@@ -121,10 +121,12 @@ int main(int argc, char * argv[])
     if (fread(&bmi,sizeof(bmi.bmiHeader),1,infile) == 1)
     {
         int c = bmi.bmiHeader.biClrUsed;
-        if (c==0) c=256; // from MS BMP specs. 0 means 2^n colors
+        if (c==0) 1 << bmi.bmiHeader.biBitCount; // from MS BMP specs. 0 means 2^n colors
         bmi.bmiHeader.biClrUsed = c;
         printf("Number of colours used: %d\n", c);
         //fread(&bmi.bmiColors[0],c*4,1,infile);
+        /* seek to the beginning of the color table - because of gimp */
+        fseek(infile, bf.bfOffBits-c*4, SEEK_SET); //gfx data star minus color table
         fread(&myColors[0],c*4,1,infile);
         bytes_read += sizeof(bmi.bmiHeader)+c*4;
         for (unsigned int j=0; j<bmi.bmiHeader.biClrUsed; j++) {
@@ -159,15 +161,16 @@ int main(int argc, char * argv[])
 
 
 
-	if (bmi.bmiHeader.biBitCount != 8)
+	if (bmi.bmiHeader.biBitCount != 8 && bmi.bmiHeader.biBitCount != 4)
 	{
-		printf("Only 8bpp BMP files are supported\n");
+		printf("Only 8bpp and 4bpp BMP files are supported\n");
 		fclose(infile);
+
 		exit(-1);
 	}
 
 	/* Allocate buffer storage */
-	bmpsize = bmi.bmiHeader.biWidth * bmi.bmiHeader.biHeight;
+	bmpsize = bmi.bmiHeader.biWidth * bmi.bmiHeader.biHeight*bmi.bmiHeader.biBitCount/8;
 	if (bmi.bmiHeader.biWidth%4) {
             padbytes = bmi.bmiHeader.biWidth%4;
             printf("Width is not divisible by 4\n");
@@ -302,13 +305,20 @@ int main(int argc, char * argv[])
             else fprintf (outfile, "%d", databuffer[offset]);
             fillindex++;
         } else if (use4) {
-            if (bitcounter) {
+            if (bmi.bmiHeader.biBitCount == 8) {
+                /** 8-bit (photoshop) **/
+                if (bitcounter) {
                     fprintf (outfile, "%d", (unsigned char)(prevvalue[0]<<4 | databuffer[offset]));
                     fillindex++;
-            } else {
+                } else {
                     prevvalue[0] = databuffer[offset];
+                }
+                bitcounter = !bitcounter;
+            } else if (bmi.bmiHeader.biBitCount == 4){
+                /** 4-bit (gimp) **/
+                fprintf (outfile, "%d", databuffer[offset]);
+                fillindex++;
             }
-            bitcounter = !bitcounter;
         } else if (use2) {
             unsigned char outputbyte;
             switch(bitcounter) {

@@ -12,6 +12,7 @@
 				<Option object_output="obj/Debug/" />
 				<Option type="1" />
 				<Option compiler="gcc" />
+				<Option parameters="roguegimp -4 " />
 				<Compiler>
 					<Add option="-g" />
 					<Add directory="D:/adev_git/jadore64/pok_tools/bmp2pok/" />
