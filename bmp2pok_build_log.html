@@ -1,0 +1,55 @@
+<html>
+<head>
+<title>bmp2pok build log</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" /></head>
+<body>
+<tt>
+Build started on: <u>09-06-2017 at 10:52.10</u><br />
+Build ended on: <u>09-06-2017 at 10:52.10</u><p />
+<b>-------------- Build: Linux in bmp2pok (compiler: GNU GCC Compiler)---------------</b><br />
+g++ -Wall -fexceptions -g -ID:/adev_git/jadore64/pok_tools/bmp2pok/ -c /home/jo/pokittodev/bmp2pok/main_linux.cpp -o obj/main_linux.o<br />
+/home/jo/pokittodev/bmp2pok/main_linux.cpp: In function ‘char* _strupr(char*)’:<br />
+<font color="#0000ff">/home/jo/pokittodev/bmp2pok/main_linux.cpp:38:27: warning: suggest parentheses around assignment used as truth value [-Wparentheses]</font><br />
+   while (*p = toupper( *p )) p++;<br />
+                           ^<br />
+/home/jo/pokittodev/bmp2pok/main_linux.cpp: In function ‘int main(int, char**)’:<br />
+<font color="#0000ff">/home/jo/pokittodev/bmp2pok/main_linux.cpp:216:52: warning: format ‘%d’ expects argument of type ‘int’, but argument 2 has type ‘size_t {aka long unsigned int}’ [-Wformat=]</font><br />
+             printf("strlen file: %d " ,strlen(file));<br />
+                                                    ^<br />
+<font color="#0000ff">/home/jo/pokittodev/bmp2pok/main_linux.cpp:261:21: warning: statement has no effect [-Wunused-value]</font><br />
+         if (c==0) 1 &lt;&lt; bmi.bmiHeader.biBitCount; // from MS BMP specs. 0 means 2^n colors<br />
+                     ^<br />
+<font color="#0000ff">/home/jo/pokittodev/bmp2pok/main_linux.cpp:269:48: warning: comparison between signed and unsigned integer expressions [-Wsign-compare]</font><br />
+         for (unsigned int j=0; j&lt;bmi.bmiHeader.biClrUsed; j++) {<br />
+                                                ^<br />
+<font color="#0000ff">/home/jo/pokittodev/bmp2pok/main_linux.cpp:367:26: warning: format not a string literal and no format arguments [-Wformat-security]</font><br />
+  sprintf(of_name,justfile);<br />
+                          ^<br />
+<font color="#0000ff">/home/jo/pokittodev/bmp2pok/main_linux.cpp:393:33: warning: format not a string literal and no format arguments [-Wformat-security]</font><br />
+         fprintf(outfile,justfile);<br />
+                                 ^<br />
+<font color="#0000ff">/home/jo/pokittodev/bmp2pok/main_linux.cpp:399:37: warning: comparison between signed and unsigned integer expressions [-Wsign-compare]</font><br />
+         if (bmi.bmiHeader.biClrUsed&gt;numcol) {<br />
+                                     ^<br />
+<font color="#0000ff">/home/jo/pokittodev/bmp2pok/main_linux.cpp:406:34: warning: comparison between signed and unsigned integer expressions [-Wsign-compare]</font><br />
+         if (numcol&gt;bmi.bmiHeader.biClrUsed) numcol = bmi.bmiHeader.biClrUsed;<br />
+                                  ^<br />
+<font color="#0000ff">/home/jo/pokittodev/bmp2pok/main_linux.cpp:420:33: warning: format not a string literal and no format arguments [-Wformat-security]</font><br />
+         fprintf(outfile,justfile);<br />
+                                 ^<br />
+<font color="#0000ff">/home/jo/pokittodev/bmp2pok/main_linux.cpp:487:44: warning: comparison between signed and unsigned integer expressions [-Wsign-compare]</font><br />
+             if (fillindex == bmi.bmiHeader.biWidth) //line change<br />
+                                            ^<br />
+<font color="#0000ff">/home/jo/pokittodev/bmp2pok/main_linux.cpp:154:33: warning: variable ‘palout’ set but not used [-Wunused-but-set-variable]</font><br />
+     int use2=0, use4=0, use8=0, palout=0, padbytes=0;<br />
+                                 ^<br />
+<font color="#0000ff">/home/jo/pokittodev/bmp2pok/main_linux.cpp:427:6: warning: variable ‘entrywidth’ set but not used [-Wunused-but-set-variable]</font><br />
+  int entrywidth = 0;<br />
+      ^<br />
+g++  -o ./binLinux/bmp2pok obj/helpers.o obj/main_linux.o<br />
+Output file is ./binLinux/bmp2pok with size 23,60 KB<br />
+<font color="#0000ff">Process terminated with status 0 (0 minute(s), 0 second(s))</font><br />
+<font color="#0000ff">0 error(s), 12 warning(s) (0 minute(s), 0 second(s))</font><br />
+</tt>
+</body>
+</html>

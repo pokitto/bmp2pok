@@ -2,7 +2,9 @@
 #include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
+#ifndef __unix__
 #include "windows.h"
+#endif // __unix__
 #include "helpers.h"
 
 

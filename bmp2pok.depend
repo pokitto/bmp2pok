@@ -17,3 +17,22 @@
 	"windows.h"
 	"helpers.h"
 
+1496994729 source:/home/jo/pokittodev/bmp2pok/main_linux.cpp
+	<stdio.h>
+	<ctype.h>
+	<stdlib.h>
+	<string.h>
+	<stdint.h>
+	"helpers.h"
+	<ctype.h>
+
+1496993410 /home/jo/pokittodev/bmp2pok/helpers.h
+
+1496994231 source:/home/jo/pokittodev/bmp2pok/helpers.cpp
+	<stdio.h>
+	<ctype.h>
+	<stdlib.h>
+	<string.h>
+	"windows.h"
+	"helpers.h"
+
