@@ -1,6 +1,4 @@
 /obj
-*.exe
-*.dll
 *.zip
 *.usbeecomp
 *.o
