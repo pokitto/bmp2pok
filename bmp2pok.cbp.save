@@ -35,6 +35,10 @@
 			<Add option="-Wall" />
 			<Add option="-fexceptions" />
 		</Compiler>
+		<Unit filename="common.cpp">
+			<Option compile="0" />
+			<Option link="0" />
+		</Unit>
 		<Unit filename="helpers.cpp" />
 		<Unit filename="helpers.h" />
 		<Unit filename="main.cpp">
