@@ -1,5 +1,5 @@
 # depslib dependency file v1.0
-1496927062 source:c:\pokittodev\bmp2pok\helpers.cpp
+1497087002 source:c:\pokittodev\bmp2pok\helpers.cpp
 	<stdio.h>
 	<ctype.h>
 	<stdlib.h>
