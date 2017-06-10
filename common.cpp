@@ -15,12 +15,13 @@ int main(int argc, char * argv[])
     char dir[_MAX_DIR];
     char file[_MAX_FNAME];
     char justfile[_MAX_FNAME];
-	  char ufile[_MAX_FNAME];
+    char ufile[_MAX_FNAME];
     char ext[_MAX_EXT];
     char of_name[_MAX_FNAME+_MAX_EXT];
     unsigned char *databuffer;
-    unsigned char *rowbuffer;
-    char *commentbuffer;
+    unsigned char *rowbuffer; unsigned char *rowbuffer2;
+    uint16_t rowbufindex=0, currentrowbuf=1;
+    char *commentbuffer, commentbuffer2;
     bool rowflipping=false; //needed for 4-bit files from GIMP
 
 	printf("Pokitto BMP to Pokitto bitmap conversion utility\n");
@@ -95,6 +96,14 @@ int main(int argc, char * argv[])
         use8 = 0;
     }
 
+    /** numcol is the number of colors for output */
+    unsigned int numcol;
+    unsigned char pixperbyte;
+
+    if (use8) { numcol=256;pixperbyte=1;}
+    else if (use4) { numcol=16;pixperbyte=2;}
+    else if (use2) { numcol=4;pixperbyte=4;}
+
     infile = fopen(file, "rb");
     if (!infile)
     {
@@ -113,8 +122,9 @@ int main(int argc, char * argv[])
 		exit(-1);
 	}
 
-  uint16_t test = sizeof(bmi.bmiHeader);
 
+
+  uint16_t test = sizeof(bmi.bmiHeader);
   if (fread(&bmi,test,1,infile) == 1)
     {
 	if (bf.bfType != 0x4D42) {
@@ -179,6 +189,11 @@ int main(int argc, char * argv[])
 	}
 
 	databuffer = (unsigned char *) malloc(bmpsize);
+    rowbuffer = (unsigned char *) malloc(bmi.bmiHeader.biWidth/pixperbyte);
+    rowbuffer2 = (unsigned char *) malloc(bmi.bmiHeader.biWidth/pixperbyte);
+    commentbuffer = (char *) malloc(bmi.bmiHeader.biWidth+16);
+    commentbuffer2 = (char *) malloc(bmi.bmiHeader.biWidth+16);
+
 	if (databuffer == NULL)
 	{
 		printf("Error allocating temporary data buffer, is image too big?\n");
@@ -256,10 +271,7 @@ int main(int argc, char * argv[])
         fprintf(outfile,"const uint16_t ");
         fprintf(outfile,justfile);
         fprintf(outfile,"_pal[] = {\n");
-        unsigned int numcol;
-        if (use8) { numcol=256;}
-        else if (use4) { numcol=16;}
-        else if (use2) { numcol=4;}
+
         if (bmi.bmiHeader.biClrUsed>numcol) {
                 printf("WARNING! \n");
                 printf("Your image has %d different colors.\n",(int)bmi.bmiHeader.biClrUsed);
@@ -359,21 +371,20 @@ int main(int argc, char * argv[])
                 bitcounter = 0;
             }
             } else if (bmi.bmiHeader.biBitCount == 4) {
+            rowflipping=true;
             /** 4-bit source **/
-            uint16_t xtra = 0;
-            //if (row&3==0) xtra=20;
             switch(bitcounter) {
             case 0:
-                prevvalue[0] = databuffer[offset+xtra]&0x0F; // first pixel is first byte lower nibble
+                prevvalue[0] = databuffer[offset]&0x0F; // first pixel is first byte lower nibble
                 linei++; i--;// dont jump to next byte yet
                 bitcounter +=2;
                 break;
             case 2:
-                prevvalue[1] = databuffer[offset+xtra]>>4; // 2nd pixel is first byte higher nibble
+                prevvalue[1] = databuffer[offset]>>4; // 2nd pixel is first byte higher nibble
                 bitcounter +=2;
                 break;
             case 4:
-                prevvalue[2] = databuffer[offset+xtra]&0x0F; // third pixel is second byte lower nibble
+                prevvalue[2] = databuffer[offset]&0x0F; // third pixel is second byte lower nibble
                 linei++; i--;// dont jump to next byte yet
                 bitcounter +=2;
                 break;
@@ -385,14 +396,17 @@ int main(int argc, char * argv[])
                 outputbyte |= ((uint8_t)prevvalue[2] << 2); //pixel 2
                 outputbyte |= databuffer[offset]>>4; // 4th pixel is second byte higher nibble*/
 
-                prevvalue[3] = databuffer[offset+xtra]>>4;
+                prevvalue[3] = databuffer[offset]>>4;
 
                 outputbyte = ((uint8_t)prevvalue[1] << 6); //pixel 0 is highest half nibble
                 outputbyte |= ((uint8_t)prevvalue[0] << 4); //pixel 1
                 outputbyte |= ((uint8_t)prevvalue[3] << 2); //pixel 2
                 outputbyte |= ((uint8_t)prevvalue[2] << 0); // 4th pixel is second byte higher nibble*/
                 //if (row&3>2) outputbyte=0;
-                fprintf (outfile, "%d", outputbyte);
+                //fprintf (outfile, "%d", outputbyte);
+
+                if (currentrowbuf==1) rowbuffer[rowbufindex++]=outputbyte;
+                else rowbuffer2[rowbufindex++]=outputbyte;
                 fillindex ++;
                 bitcounter = 0;
             }
@@ -401,19 +415,43 @@ int main(int argc, char * argv[])
         }
         if (temp!=fillindex) {
             /** A new entry was written to file **/
-            uint8_t outputbitness=1;
-            if (use2) outputbitness = 2;
-            else if (use4) outputbitness = 4;
-            else if (use8) outputbitness = 8;
-            //if (fillindex == (bmi.bmiHeader.biWidth*bmi.bmiHeader.biBitCount)/8) //line change
-            if (fillindex == (bmi.bmiHeader.biWidth*outputbitness)/8) //line change
+            if (fillindex == bmi.bmiHeader.biWidth/pixperbyte) //line change
             {
-                fprintf (outfile, ",\n");
-                fillindex = 0;
-                row++;
+                if (rowflipping) {
+                    /** flip rows**/
+                    /** this is where row flipping happens **/
+                    /** it was needed to change order of rows in a 4-bit source from GIMP */
+                    if (currentrowbuf==2) {
+                        /** output row 2 **/
+                        for (int z=0;z<fillindex;z++) {
+                                fprintf (outfile, "0x");
+                                if (rowbuffer2[z]<0x10) fprintf (outfile, "0");
+                                fprintf (outfile, "%X,",rowbuffer2[z]);
+                        }
+                        fprintf (outfile, "\n");
+                        /** output row 1 **/
+                        for (int z=0;z<fillindex;z++) {
+                                fprintf (outfile, "0x");
+                                if (rowbuffer[z]<0x10) fprintf (outfile, "0");
+                                fprintf (outfile, "%X,",rowbuffer[z]);
+                        }
+                        fprintf (outfile, "\n");
+                        currentrowbuf=1;
+                    } else {
+                        currentrowbuf=002;
+                    }
+                    rowbufindex=0;
+                    fillindex = 0;
+                    row++;
+                } else {
+                    /** no row flipping **/
+                    fprintf (outfile, ",\n");
+                    fillindex = 0;
+                    row++;
+                }
             }
             else {
-                fprintf (outfile, ","); // add comma after entry
+                if (rowflipping==false) fprintf (outfile, ","); // add comma after entry
             }
         }
 		i++;
@@ -426,7 +464,7 @@ int main(int argc, char * argv[])
 		linei--;
 	}
 
-    fprintf (outfile, "\n};");
+    fprintf (outfile, "};");
 	free(databuffer);
 	fclose(outfile);
 
