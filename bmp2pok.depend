@@ -9,13 +9,15 @@
 
 1496927062 c:\pokittodev\bmp2pok\helpers.h
 
-1496968474 source:c:\pokittodev\bmp2pok\main.cpp
+1497087115 source:c:\pokittodev\bmp2pok\main.cpp
 	<stdio.h>
 	<ctype.h>
 	<stdlib.h>
 	<string.h>
 	"windows.h"
 	"helpers.h"
+	<stdint.h>
+	"common.cpp"
 
 1497000730 source:/home/jo/pokittodev/bmp2pok/main_linux.cpp
 	<stdio.h>
@@ -38,4 +40,6 @@
 	"helpers.h"
 
 1497043838 /home/jo/pokittodev/bmp2pok/common.cpp
+
+1497090700 c:\pokittodev\bmp2pok\common.cpp
 

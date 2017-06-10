@@ -19,7 +19,9 @@ int main(int argc, char * argv[])
     char ext[_MAX_EXT];
     char of_name[_MAX_FNAME+_MAX_EXT];
     unsigned char *databuffer;
-
+    unsigned char *rowbuffer;
+    char *commentbuffer;
+    bool rowflipping=false; //needed for 4-bit files from GIMP
 
 	printf("Pokitto BMP to Pokitto bitmap conversion utility\n");
 
@@ -71,11 +73,11 @@ int main(int argc, char * argv[])
         if (strlen(ext)==0) {
             strcpy(justfile,argv[1]); // save a copy of bare filename
         } else {
-            printf("strlen file: %d " ,strlen(file));
+            //printf("strlen file: %d " ,strlen(file));
             memset((void*)justfile,0,_MAX_FNAME);
             memcpy((void*)justfile,(void*)file,strlen(file)-4);
             strcat(justfile,"\0");
-            printf("justfile: %s ",justfile);
+            //printf("justfile: %s ",justfile);
         }
 
         if (strlen(ext) == 0)
@@ -112,9 +114,22 @@ int main(int argc, char * argv[])
 	}
 
   uint16_t test = sizeof(bmi.bmiHeader);
-  //test++;
-    if (fread(&bmi,test,1,infile) == 1)
+
+  if (fread(&bmi,test,1,infile) == 1)
     {
+	if (bf.bfType != 0x4D42) {
+        printf("Bitmap file has an unrecognized format (4D42 id missing from beginning).\n");
+        printf("BMP2POK accepts .BMP files that have an indexed (4-bit or 8-bit) color palette.\n");
+		fclose(infile);
+		exit(-1);
+	}
+    if (bmi.bmiHeader.biBitCount != 8 && bmi.bmiHeader.biBitCount != 4 && bmi.bmiHeader.biBitCount != 1)
+	{
+		printf("Only 8bpp, 4bpp & 1bpp BMP files are supported\n");
+		fclose(infile);
+
+		exit(-1);
+	}
         int c = bmi.bmiHeader.biClrUsed;
         if (c==0) c = 1 << bmi.bmiHeader.biBitCount; // from MS BMP specs. 0 means 2^n colors
         bmi.bmiHeader.biClrUsed = c;
@@ -154,15 +169,6 @@ int main(int argc, char * argv[])
 		exit(-1);
 	}
 
-
-
-	if (bmi.bmiHeader.biBitCount != 8 && bmi.bmiHeader.biBitCount != 4 && bmi.bmiHeader.biBitCount != 1)
-	{
-		printf("Only 8bpp, 4bpp & 1bpp BMP files are supported\n");
-		fclose(infile);
-
-		exit(-1);
-	}
 
 	/* Allocate buffer storage */
 	bmpsize = bmi.bmiHeader.biWidth * bmi.bmiHeader.biHeight*bmi.bmiHeader.biBitCount/8;
