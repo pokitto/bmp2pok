@@ -21,7 +21,7 @@ int main(int argc, char * argv[])
     unsigned char *databuffer;
     unsigned char *rowbuffer; unsigned char *rowbuffer2;
     uint16_t rowbufindex=0, currentrowbuf=1;
-    char *commentbuffer, commentbuffer2;
+    char *commentbuffer; char* commentbuffer2;
     bool rowflipping=false; //needed for 4-bit files from GIMP
 
 	printf("Pokitto BMP to Pokitto bitmap conversion utility\n");
