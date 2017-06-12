@@ -323,9 +323,8 @@ int main(int argc, char * argv[])
   for (uint32_t j=0, l=0; j<bmi.bmiHeader.biHeight; j++) {
     fprintf (outfile, "// ");
     for (uint16_t k=0; k<bmi.bmiHeader.biWidth; k++, l++) {
-    unsigned char temp = parsedbuffer[l];
-    if (temp<0x10) fprintf (outfile, "%X",temp);
-    else fprintf (outfile, "%X",temp);
+    unsigned char temp = parsed
+    fprintf (outfile, parsed);
     }
     fprintf (outfile, "\n");
   }
@@ -404,8 +403,8 @@ int main(int argc, char * argv[])
       else fprintf (outfile, "%d,", combined);
       b+=7; i+= 7; // jump over next 7 bytes
     }
+    fprintf (outfile, "\n");
 	}
-	fprintf (outfile, "\n");
 }
 
 /** FINALIZE **/

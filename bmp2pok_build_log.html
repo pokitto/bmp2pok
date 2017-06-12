@@ -4,8 +4,8 @@
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" /></head>
 <body>
 <tt>
-Build started on: <u>11-06-2017 at 18:56.09</u><br />
-Build ended on: <u>11-06-2017 at 18:56.09</u><p />
+Build started on: <u>13-06-2017 at 00:24.34</u><br />
+Build ended on: <u>13-06-2017 at 00:24.34</u><p />
 <b>-------------- Build: Linux in bmp2pok (compiler: GNU GCC Compiler)---------------</b><br />
 g++ -Wall -fexceptions -g -ID:/adev_git/jadore64/pok_tools/bmp2pok/ -c /home/jo/pokittodev/bmp2pok/main_linux.cpp -o obj/main_linux.o<br />
 /home/jo/pokittodev/bmp2pok/main_linux.cpp: In function ‘char* _strupr(char*)’:<br />
@@ -14,51 +14,64 @@ g++ -Wall -fexceptions -g -ID:/adev_git/jadore64/pok_tools/bmp2pok/ -c /home/jo/
                            ^<br />
 In file included from /home/jo/pokittodev/bmp2pok/main_linux.cpp:122:0:<br />
 /home/jo/pokittodev/bmp2pok/common.cpp: In function ‘int main(int, char**)’:<br />
-<font color="#0000ff">/home/jo/pokittodev/bmp2pok/common.cpp:152:48: warning: comparison between signed and unsigned integer expressions [-Wsign-compare]</font><br />
+<font color="#0000ff">/home/jo/pokittodev/bmp2pok/common.cpp:158:48: warning: comparison between signed and unsigned integer expressions [-Wsign-compare]</font><br />
          for (unsigned int j=0; j&lt;bmi.bmiHeader.biClrUsed; j++) {<br />
                                                 ^<br />
-<font color="#0000ff">/home/jo/pokittodev/bmp2pok/common.cpp:246:26: warning: format not a string literal and no format arguments [-Wformat-security]</font><br />
+<font color="#0000ff">/home/jo/pokittodev/bmp2pok/common.cpp:297:26: warning: format not a string literal and no format arguments [-Wformat-security]</font><br />
   sprintf(of_name,justfile);<br />
                           ^<br />
-<font color="#0000ff">/home/jo/pokittodev/bmp2pok/common.cpp:272:33: warning: format not a string literal and no format arguments [-Wformat-security]</font><br />
-         fprintf(outfile,justfile);<br />
-                                 ^<br />
-<font color="#0000ff">/home/jo/pokittodev/bmp2pok/common.cpp:275:37: warning: comparison between signed and unsigned integer expressions [-Wsign-compare]</font><br />
-         if (bmi.bmiHeader.biClrUsed&gt;numcol) {<br />
-                                     ^<br />
-<font color="#0000ff">/home/jo/pokittodev/bmp2pok/common.cpp:282:34: warning: comparison between signed and unsigned integer expressions [-Wsign-compare]</font><br />
-         if (numcol&gt;bmi.bmiHeader.biClrUsed) numcol = bmi.bmiHeader.biClrUsed;<br />
-                                  ^<br />
-<font color="#0000ff">/home/jo/pokittodev/bmp2pok/common.cpp:296:33: warning: format not a string literal and no format arguments [-Wformat-security]</font><br />
-         fprintf(outfile,justfile);<br />
-                                 ^<br />
-In file included from /home/jo/pokittodev/bmp2pok/main_linux.cpp:122:0:<br />
-<font color="#0000ff">/home/jo/pokittodev/bmp2pok/common.cpp:418:52: warning: comparison between signed and unsigned integer expressions [-Wsign-compare]</font><br />
-             if (fillindex == bmi.bmiHeader.biWidth/pixperbyte) //line change<br />
-                                                    ^<br />
-<font color="#0000ff">/home/jo/pokittodev/bmp2pok/common.cpp:426:40: warning: comparison between signed and unsigned integer expressions [-Wsign-compare]</font><br />
-                         for (int z=0;z&lt;fillindex;z++) {<br />
-                                        ^<br />
-<font color="#0000ff">/home/jo/pokittodev/bmp2pok/common.cpp:433:40: warning: comparison between signed and unsigned integer expressions [-Wsign-compare]</font><br />
-                         for (int z=0;z&lt;fillindex;z++) {<br />
-                                        ^<br />
-In file included from /home/jo/pokittodev/bmp2pok/main_linux.cpp:122:0:<br />
-<font color="#0000ff">/home/jo/pokittodev/bmp2pok/common.cpp:12:33: warning: variable ‘palout’ set but not used [-Wunused-but-set-variable]</font><br />
-     int use2=0, use4=0, use8=0, palout=0, padbytes=0;<br />
-                                 ^<br />
-<font color="#0000ff">/home/jo/pokittodev/bmp2pok/common.cpp:24:11: warning: variable ‘commentbuffer’ set but not used [-Wunused-but-set-variable]</font><br />
+<font color="#0000ff">/home/jo/pokittodev/bmp2pok/common.cpp:323:43: warning: comparison between signed and unsigned integer expressions [-Wsign-compare]</font><br />
+   for (uint32_t j=0, l=0; j&lt;bmi.bmiHeader.biHeight; j++) {<br />
+                                           ^<br />
+<font color="#0000ff">/home/jo/pokittodev/bmp2pok/common.cpp:336:27: warning: format not a string literal and no format arguments [-Wformat-security]</font><br />
+   fprintf(outfile,justfile);<br />
+                           ^<br />
+<font color="#0000ff">/home/jo/pokittodev/bmp2pok/common.cpp:339:31: warning: comparison between signed and unsigned integer expressions [-Wsign-compare]</font><br />
+   if (bmi.bmiHeader.biClrUsed&gt;numcol) {<br />
+                               ^<br />
+<font color="#0000ff">/home/jo/pokittodev/bmp2pok/common.cpp:349:28: warning: comparison between signed and unsigned integer expressions [-Wsign-compare]</font><br />
+   if (numcol&gt;bmi.bmiHeader.biClrUsed) numcol = bmi.bmiHeader.biClrUsed;<br />
+                            ^<br />
+<font color="#0000ff">/home/jo/pokittodev/bmp2pok/common.cpp:364:27: warning: format not a string literal and no format arguments [-Wformat-security]</font><br />
+   fprintf(outfile,justfile);<br />
+                           ^<br />
+<font color="#0000ff">/home/jo/pokittodev/bmp2pok/common.cpp:10:64: warning: unused variable ‘nextlinei’ [-Wunused-variable]</font><br />
+     uint32_t bytes_read = 0, bmpsize, parsedsize=0, fillindex, nextlinei, linei, i, offset;<br />
+                                                                ^<br />
+<font color="#0000ff">/home/jo/pokittodev/bmp2pok/common.cpp:10:75: warning: unused variable ‘linei’ [-Wunused-variable]</font><br />
+     uint32_t bytes_read = 0, bmpsize, parsedsize=0, fillindex, nextlinei, linei, i, offset;<br />
+                                                                           ^<br />
+<font color="#0000ff">/home/jo/pokittodev/bmp2pok/common.cpp:10:85: warning: unused variable ‘offset’ [-Wunused-variable]</font><br />
+     uint32_t bytes_read = 0, bmpsize, parsedsize=0, fillindex, nextlinei, linei, i, offset;<br />
+                                                                                     ^<br />
+<font color="#0000ff">/home/jo/pokittodev/bmp2pok/common.cpp:12:41: warning: variable ‘palout’ set but not used [-Wunused-but-set-variable]</font><br />
+     int use1=0, use2=0, use4=0, use8=0, palout=0, padbytes=0;<br />
+                                         ^<br />
+<font color="#0000ff">/home/jo/pokittodev/bmp2pok/common.cpp:23:20: warning: variable ‘rowbuffer’ set but not used [-Wunused-but-set-variable]</font><br />
+     unsigned char *rowbuffer; unsigned char *rowbuffer2;<br />
+                    ^<br />
+<font color="#0000ff">/home/jo/pokittodev/bmp2pok/common.cpp:23:46: warning: variable ‘rowbuffer2’ set but not used [-Wunused-but-set-variable]</font><br />
+     unsigned char *rowbuffer; unsigned char *rowbuffer2;<br />
+                                              ^<br />
+<font color="#0000ff">/home/jo/pokittodev/bmp2pok/common.cpp:24:14: warning: unused variable ‘rowbufindex’ [-Wunused-variable]</font><br />
+     uint16_t rowbufindex=0, currentrowbuf=1;<br />
+              ^<br />
+<font color="#0000ff">/home/jo/pokittodev/bmp2pok/common.cpp:24:29: warning: unused variable ‘currentrowbuf’ [-Wunused-variable]</font><br />
+     uint16_t rowbufindex=0, currentrowbuf=1;<br />
+                             ^<br />
+<font color="#0000ff">/home/jo/pokittodev/bmp2pok/common.cpp:25:11: warning: variable ‘commentbuffer’ set but not used [-Wunused-but-set-variable]</font><br />
      char *commentbuffer; char* commentbuffer2;<br />
            ^<br />
-<font color="#0000ff">/home/jo/pokittodev/bmp2pok/common.cpp:24:32: warning: variable ‘commentbuffer2’ set but not used [-Wunused-but-set-variable]</font><br />
+<font color="#0000ff">/home/jo/pokittodev/bmp2pok/common.cpp:25:32: warning: variable ‘commentbuffer2’ set but not used [-Wunused-but-set-variable]</font><br />
      char *commentbuffer; char* commentbuffer2;<br />
                                 ^<br />
-<font color="#0000ff">/home/jo/pokittodev/bmp2pok/common.cpp:303:6: warning: variable ‘entrywidth’ set but not used [-Wunused-but-set-variable]</font><br />
-  int entrywidth = 0;<br />
-      ^<br />
+<font color="#0000ff">/home/jo/pokittodev/bmp2pok/common.cpp:26:10: warning: unused variable ‘rowflipping’ [-Wunused-variable]</font><br />
+     bool rowflipping=false; //needed for 4-bit files from GIMP<br />
+          ^<br />
 g++  -o ./binLinux/bmp2pok obj/helpers.o obj/main_linux.o<br />
-Output file is ./binLinux/bmp2pok with size 24,00 KB<br />
+Output file is ./binLinux/bmp2pok with size 28,35 KB<br />
 <font color="#0000ff">Process terminated with status 0 (0 minute(s), 0 second(s))</font><br />
-<font color="#0000ff">0 error(s), 14 warning(s) (0 minute(s), 0 second(s))</font><br />
+<font color="#0000ff">0 error(s), 19 warning(s) (0 minute(s), 0 second(s))</font><br />
 </tt>
 </body>
 </html>
