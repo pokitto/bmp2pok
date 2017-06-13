@@ -273,14 +273,14 @@ int main(int argc, char * argv[])
         if (!use8 && !use4 && tempcol > 0x03) truncated_warning = true;
         l++; break;
     case 1:
-        parsedbuffer[l] =   (databuffer[k]>>7)&0x01;
-        parsedbuffer[l+1] = (databuffer[k]>>6)&0x01;
-        parsedbuffer[l+2] = (databuffer[k]>>5)&0x01;
-        parsedbuffer[l+3] = (databuffer[k]>>4)&0x01;
-        parsedbuffer[l+4] = (databuffer[k]>>3)&0x01;
-        parsedbuffer[l+5] = (databuffer[k]>>2)&0x01;
-        parsedbuffer[l+6] = (databuffer[k]>>1)&0x01;
-        parsedbuffer[l+7] = (databuffer[k]>>0)&0x01;
+        parsedbuffer[l] =   (databuffer[k]>>0)&0x01;
+        parsedbuffer[l+1] = (databuffer[k]>>1)&0x01;
+        parsedbuffer[l+2] = (databuffer[k]>>2)&0x01;
+        parsedbuffer[l+3] = (databuffer[k]>>3)&0x01;
+        parsedbuffer[l+4] = (databuffer[k]>>4)&0x01;
+        parsedbuffer[l+5] = (databuffer[k]>>5)&0x01;
+        parsedbuffer[l+6] = (databuffer[k]>>6)&0x01;
+        parsedbuffer[l+7] = (databuffer[k]>>7)&0x01;
         l += 7; break;
     }
   }
