@@ -20,10 +20,7 @@ int main(int argc, char * argv[])
     char of_name[_MAX_FNAME+_MAX_EXT];
     unsigned char *databuffer;
     unsigned char *parsedbuffer;
-    unsigned char *rowbuffer; unsigned char *rowbuffer2;
-    uint16_t rowbufindex=0, currentrowbuf=1;
-    char *commentbuffer; char* commentbuffer2;
-    bool rowflipping=false; //needed for 4-bit files from GIMP
+    unsigned char *rowbuffer;
 
 	printf("Pokitto BMP to Pokitto bitmap conversion utility\n");
 
@@ -139,6 +136,15 @@ int main(int argc, char * argv[])
 		fclose(infile);
 		exit(-1);
 	}
+
+	if (bmi.bmiHeader.biWidth%32 && bmi.bmiHeader.biBitCount == 1) {
+            printf("ERROR!\nPadding of 1-bit (monochrome) images is not yet supported\n");
+            printf("1-bit images need to have width that is divisible by 32!\n");
+            printf("Adjust size of source image.\n", padbytes);
+            fclose(infile);
+            exit(-1);
+	}
+
     if (bmi.bmiHeader.biBitCount != 8 && bmi.bmiHeader.biBitCount != 4 && bmi.bmiHeader.biBitCount != 1)
 	{
 		printf("Only 8bpp, 4bpp & 1bpp BMP files are supported\n");
@@ -150,6 +156,7 @@ int main(int argc, char * argv[])
         if (c==0) c = 1 << bmi.bmiHeader.biBitCount; // from MS BMP specs. 0 means 2^n colors
         bmi.bmiHeader.biClrUsed = c;
         printf("Number of colours used: %d\n", c);
+        printf("Bits per pixel: %d\n", bmi.bmiHeader.biBitCount);
         //fread(&bmi.bmiColors[0],c*4,1,infile);
         /* seek to the beginning of the color table - because of gimp */
         fseek(infile, bf.bfOffBits-c*4, SEEK_SET); //gfx data star minus color table
@@ -188,19 +195,25 @@ int main(int argc, char * argv[])
 
 	/** ALLOCATE buffer storage **/
 	bmpsize = bmi.bmiHeader.biWidth * bmi.bmiHeader.biHeight*bmi.bmiHeader.biBitCount/8;
-	parsedsize = bmi.bmiHeader.biWidth * bmi.bmiHeader.biHeight;
+	parsedsize = bmi.bmiHeader.biWidth * bmi.bmiHeader.biHeight ;
 	if (bmi.bmiHeader.biWidth%4) {
             padbytes = bmi.bmiHeader.biWidth%4;
             printf("Width is not divisible by 4\n");
             printf("Ignoring %d padding bytes at each line\n", padbytes);
 	}
 
-	databuffer = (unsigned char *) malloc(bmpsize);
+	if (bmi.bmiHeader.biWidth%8 && bmi.bmiHeader.biBitCount==4) {
+            if (bmi.bmiHeader.biWidth%4) {
+            printf("ERROR!\n4-bit source images have to have a width that is divisible by 4\n");
+              fclose(infile);
+              exit(-1);
+            }
+            padbytes=2;
+	}
+
+	databuffer = (unsigned char *) malloc(parsedsize);
 	parsedbuffer = (unsigned char *) malloc (parsedsize);
-  rowbuffer = (unsigned char *) malloc(bmi.bmiHeader.biWidth/pixperbyte);
-  rowbuffer2 = (unsigned char *) malloc(bmi.bmiHeader.biWidth/pixperbyte);
-  commentbuffer = (char *) malloc(bmi.bmiHeader.biWidth+16);
-  commentbuffer2 = (char *) malloc(bmi.bmiHeader.biWidth+16);
+  rowbuffer = (unsigned char*) malloc (bmi.bmiHeader.biWidth);
 
 	if (databuffer == NULL)
 	{
@@ -214,6 +227,7 @@ int main(int argc, char * argv[])
 
 	/** READ DATA into array, IGNORE BMP PADDING **/
 	int padcounter = bmi.bmiHeader.biWidth+padbytes;
+	if (bmi.bmiHeader.biBitCount==4) padcounter = bmi.bmiHeader.biWidth/2+padbytes;
 	fillindex = bmpsize - 1;
 	i = 0;
 	while (i < bmpsize)
@@ -222,7 +236,7 @@ int main(int argc, char * argv[])
 
 		if (fread(&rgb, sizeof(rgb), 1, infile) != 1)
 		{
-			printf("error reading BMP data\n");
+			printf("Error reading BMP data\n");
  		    fclose(infile);
 			free(databuffer);
 	        exit(-1);
@@ -231,11 +245,20 @@ int main(int argc, char * argv[])
 		   stored in reverse, so save the data backwards */
         if (padbytes) {
             /* there are padding bytes */
-            if (padcounter>padbytes) {
+            if (bmi.bmiHeader.biBitCount==4) {
+              if (padcounter > bmi.bmiHeader.biWidth) { 
+                /*not in padding section, so store */
+                databuffer[fillindex]=rgb;
+                fillindex--;
+                i++;
+                }
+            } else {
+              if (padcounter>padbytes) {
                 /*not in padding section yet, so store */
                 databuffer[fillindex]=rgb;
                 fillindex--;
                 i++;
+            }
             }
             padcounter--;
             if (padcounter==0) padcounter = bmi.bmiHeader.biWidth + padbytes; // reset padvounter at each line
@@ -251,36 +274,51 @@ int main(int argc, char * argv[])
 	fclose(infile);
 
   /** PARSING DATABUFFER to PURE BYTES (1-,4- bit sources to 8-bit) **/
+  uint16_t tempcol;
+  bool truncated_warning = false;
 
-
-  for (uint16_t k=0, rowcount=0; k < bmpsize; k++, rowcount++) {
-    if (rowcount == bmi.bmiHeader.biWidth) {
-      k += 8*bmi.bmiHeader.biWidth-1; // 1-bit images are packed vertically
-      rowcount=0;
-    }
+  for (uint16_t l=0; l < parsedsize;) {
     switch (bmi.bmiHeader.biBitCount) {
     case 8:
-        parsedbuffer[k] = databuffer[k];break;
+        tempcol = databuffer[l];
+        if (!use8 && tempcol > 0x0F) truncated_warning = true;
+        parsedbuffer[l] = databuffer[l];
+        l++; //step 1 byte
+        break;
     case 4:
-        parsedbuffer[k] = databuffer[k]>>4;
-        parsedbuffer[k+1] = databuffer[k]&0x0F;
-        k++; break;
+        parsedbuffer[l+1] = databuffer[l/2]>>4;
+        tempcol = databuffer[l/2]>>4;
+        if (!use8 && !use4 && tempcol > 0x03) truncated_warning = true;
+        parsedbuffer[l] = databuffer[l/2]&0x0F;
+        tempcol = databuffer[l/2];
+        if (!use8 && !use4 && tempcol > 0x03) truncated_warning = true;
+        l+=2; //step 2 bytes
+        break;
     case 1:
-        parsedbuffer[k] =   (databuffer[k]>>7)&0x01;
-        parsedbuffer[k+1 * bmi.bmiHeader.biWidth] = (databuffer[k]>>6)&0x01;
-        parsedbuffer[k+2 * bmi.bmiHeader.biWidth] = (databuffer[k]>>5)&0x01;
-        parsedbuffer[k+3 * bmi.bmiHeader.biWidth] = (databuffer[k]>>4)&0x01;
-        parsedbuffer[k+4 * bmi.bmiHeader.biWidth] = (databuffer[k]>>3)&0x01;
-        parsedbuffer[k+5 * bmi.bmiHeader.biWidth] = (databuffer[k]>>2)&0x01;
-        parsedbuffer[k+6 * bmi.bmiHeader.biWidth] = (databuffer[k]>>1)&0x01;
-        parsedbuffer[k+7 * bmi.bmiHeader.biWidth] = (databuffer[k]>>0)&0x01;
+        parsedbuffer[l] =   (databuffer[l/2]>>0)&0x01;
+        parsedbuffer[l+1] = (databuffer[l/2]>>1)&0x01;
+        parsedbuffer[l+2] = (databuffer[l/2]>>2)&0x01;
+        parsedbuffer[l+3] = (databuffer[l/2]>>3)&0x01;
+        parsedbuffer[l+4] = (databuffer[l/2]>>4)&0x01;
+        parsedbuffer[l+5] = (databuffer[l/2]>>5)&0x01;
+        parsedbuffer[l+6] = (databuffer[l/2]>>6)&0x01;
+        parsedbuffer[l+7] = (databuffer[l/2]>>7)&0x01;
+        l += 8; //step 8 bytes
         break;
     }
-
   }
 
+
+  /** MIRROR ROWS HORIZONTALLY **/
+
+  for (uint16_t l=0; l < bmi.bmiHeader.biHeight; l++) {
+        for (uint16_t m=0; m < bmi.bmiHeader.biWidth; m++) rowbuffer[m] = parsedbuffer[m+l*bmi.bmiHeader.biWidth];
+        for (uint16_t m=0; m < bmi.bmiHeader.biWidth; m++) parsedbuffer[m+l*bmi.bmiHeader.biWidth] = rowbuffer[bmi.bmiHeader.biWidth -1 - m];
+    }
+
+
   /** FLIP ROWS for 4-BIT IMAGE SOURCES **/
-  uint16_t ind=0;
+  /*uint16_t ind=0;
   if (bmi.bmiHeader.biBitCount == 4) {
     for (uint16_t l=0; l < bmi.bmiHeader.biHeight; l+=2) {
         for (uint16_t m=0; m < bmi.bmiHeader.biWidth; m++,ind++) {
@@ -290,7 +328,7 @@ int main(int argc, char * argv[])
     }
     ind += bmi.bmiHeader.biWidth; //jump 1 row to next pair
   }
-  }
+  }*/
 
   /** PREPARE OUTPUT FILE **/
 	//if (use555)
@@ -320,15 +358,17 @@ int main(int argc, char * argv[])
 	fprintf(outfile,"#include <stdint.h>\n\n");
 
   /** SHOW PARSED DATA **/
+  #ifdef SHOW_PARSED
   for (uint32_t j=0, l=0; j<bmi.bmiHeader.biHeight; j++) {
     fprintf (outfile, "// ");
     for (uint16_t k=0; k<bmi.bmiHeader.biWidth; k++, l++) {
-    unsigned char temp = parsed
-    fprintf (outfile, parsed);
+    unsigned char temp = parsedbuffer[l];
+    if (temp<0x10) fprintf (outfile, "%X",temp);
+    else fprintf (outfile, "%X",temp);
     }
     fprintf (outfile, "\n");
   }
-
+  #endif
 
   /** OUTPUT Palette data **/
   fprintf(outfile,"const uint16_t ");
@@ -344,6 +384,10 @@ int main(int argc, char * argv[])
     printf("The program will automatically IGNORE any colors used above this limit.\n");
   }
 
+  if (truncated_warning) {
+        printf("WARNING! \nYou have pixels in your image that use colors that are not in the output palette.\n");
+        printf("The image may not look right. Reduce number of image colors in the drawing program before converting.\n");
+  }
   /** OUTPUT Palette **/
   if (numcol>bmi.bmiHeader.biClrUsed) numcol = bmi.bmiHeader.biClrUsed;
   for (unsigned int c=0;c<numcol;c++) {
@@ -363,7 +407,7 @@ int main(int argc, char * argv[])
   fprintf(outfile,justfile);
   fprintf(outfile,"[] = {\n%d,%d,\n",(int)bmi.bmiHeader.biWidth,(int)bmi.bmiHeader.biHeight);
 
-	i = 0;
+    i = 0;
 
   /** OUTPUT Image data **/
 	while (i < parsedsize)
@@ -371,25 +415,22 @@ int main(int argc, char * argv[])
 	for (uint16_t b=0; b < bmi.bmiHeader.biWidth; b++, i++) {
     if (use8) {
       /** 256 Color output **/
-      if (parsedbuffer[i]<10) fprintf (outfile, "00%d,", (unsigned char)parsedbuffer[i]);
-      else if (parsedbuffer[i]<100) fprintf (outfile, "0%d,", (unsigned char)parsedbuffer[i]);
-      else fprintf (outfile, "%d,", parsedbuffer[i]);
+      if (parsedbuffer[i]<0x10) fprintf (outfile, "0x0%X,", (unsigned char)parsedbuffer[i]);
+      else fprintf (outfile, "0x%X,", parsedbuffer[i]);
     } else if (use4) {
       /** 16 Color output **/
       unsigned char combined = (parsedbuffer[i] << 4) | (parsedbuffer[i+1] & 0x0F);
-      if (combined<10) fprintf (outfile, "00%d,", combined);
-      else if (combined<100) fprintf (outfile, "0%d,", combined);
-      else fprintf (outfile, "%d,", combined);
+      if (combined<0x10) fprintf (outfile, "0x0%X,", combined);
+      else fprintf (outfile, "0x%X,", combined);
       b++; i++; // jump over next byte
     } else if (use2) {
       /** 4 Color output **/
       unsigned char combined = (parsedbuffer[i] << 6) | (parsedbuffer[i+1] << 4) | (parsedbuffer[i+2] << 2) | (parsedbuffer[i+3]);
-      if (combined<10) fprintf (outfile, "00%d,", combined);
-      else if (combined<100) fprintf (outfile, "0%d,", combined);
-      else fprintf (outfile, "%d,", combined);
+      if (combined<0x10) fprintf (outfile, "0x0%X,", combined);
+      else fprintf (outfile, "0x%X,", combined);
       b+=3; i+=3; // jump over next 3 bytes
     } else if (use1) {
-      /** 2 Color output **/
+      /** 2 Color output - horizontal input bits are packed vertically !**/
       unsigned char combined = (parsedbuffer[i] << 7) | \
                                (parsedbuffer[i+1 * bmi.bmiHeader.biWidth] << 6) | \
                                (parsedbuffer[i+2 * bmi.bmiHeader.biWidth] << 5) | \
@@ -398,19 +439,20 @@ int main(int argc, char * argv[])
                                (parsedbuffer[i+5 * bmi.bmiHeader.biWidth] << 2) | \
                                (parsedbuffer[i+6 * bmi.bmiHeader.biWidth] << 1) | \
                                (parsedbuffer[i+7 * bmi.bmiHeader.biWidth]);
-      if (combined<10) fprintf (outfile, "00%d,", combined);
-      else if (combined<100) fprintf (outfile, "0%d,", combined);
-      else fprintf (outfile, "%d,", combined);
-      b+=7; i+= 7; // jump over next 7 bytes
+      if (combined<0x10) fprintf (outfile, "0x0%X,", combined);
+      else fprintf (outfile, "0x%X,", combined);
+      b+=7; // add 1+7 bytes processed to counter
     }
-    fprintf (outfile, "\n");
 	}
-}
+	fprintf (outfile, "\n");
+	if (use1) i += bmi.bmiHeader.biWidth;
+    }
 
 /** FINALIZE **/
 fprintf (outfile, "};");
 free(databuffer);
 free(parsedbuffer);
+free(rowbuffer);
 fclose(outfile);
 
 return 0;

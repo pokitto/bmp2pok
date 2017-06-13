@@ -195,16 +195,25 @@ int main(int argc, char * argv[])
 
 	/** ALLOCATE buffer storage **/
 	bmpsize = bmi.bmiHeader.biWidth * bmi.bmiHeader.biHeight*bmi.bmiHeader.biBitCount/8;
-	parsedsize = bmi.bmiHeader.biWidth * bmi.bmiHeader.biHeight;
+	parsedsize = bmi.bmiHeader.biWidth * bmi.bmiHeader.biHeight ;
 	if (bmi.bmiHeader.biWidth%4) {
             padbytes = bmi.bmiHeader.biWidth%4;
             printf("Width is not divisible by 4\n");
             printf("Ignoring %d padding bytes at each line\n", padbytes);
 	}
 
-	databuffer = (unsigned char *) malloc(bmpsize);
+	if (bmi.bmiHeader.biWidth%8 && bmi.bmiHeader.biBitCount==4) {
+            if (bmi.bmiHeader.biWidth%4) {
+            printf("ERROR!\n4-bit source images have to have a width that is divisible by 4\n");
+              fclose(infile);
+              exit(-1);
+            }
+            padbytes=2;
+	}
+
+	databuffer = (unsigned char *) malloc(parsedsize);
 	parsedbuffer = (unsigned char *) malloc (parsedsize);
-    rowbuffer = (unsigned char*) malloc (bmi.bmiHeader.biWidth);
+  rowbuffer = (unsigned char*) malloc (bmi.bmiHeader.biWidth);
 
 	if (databuffer == NULL)
 	{
@@ -218,6 +227,7 @@ int main(int argc, char * argv[])
 
 	/** READ DATA into array, IGNORE BMP PADDING **/
 	int padcounter = bmi.bmiHeader.biWidth+padbytes;
+	if (bmi.bmiHeader.biBitCount==4) padcounter = bmi.bmiHeader.biWidth/2+padbytes;
 	fillindex = bmpsize - 1;
 	i = 0;
 	while (i < bmpsize)
@@ -235,14 +245,24 @@ int main(int argc, char * argv[])
 		   stored in reverse, so save the data backwards */
         if (padbytes) {
             /* there are padding bytes */
-            if (padcounter>padbytes) {
+            if (bmi.bmiHeader.biBitCount==4) {
+              if (padcounter > padbytes) {
+                /*not in padding section, so store */
+                databuffer[fillindex]=rgb;
+                fillindex--;
+                i++;
+                }
+            } else {
+              if (padcounter>padbytes) {
                 /*not in padding section yet, so store */
                 databuffer[fillindex]=rgb;
                 fillindex--;
                 i++;
             }
+            }
             padcounter--;
-            if (padcounter==0) padcounter = bmi.bmiHeader.biWidth + padbytes; // reset padvounter at each line
+            if (padcounter==0 && bmi.bmiHeader.biBitCount == 4 ) padcounter = bmi.bmiHeader.biWidth/2 + padbytes; // reset padvounter at each line
+            if (padcounter==0 && bmi.bmiHeader.biBitCount == 8 ) padcounter = bmi.bmiHeader.biWidth + padbytes;
         } else {
             /* no need to worry about padding */
             databuffer[fillindex]=rgb;
@@ -258,30 +278,34 @@ int main(int argc, char * argv[])
   uint16_t tempcol;
   bool truncated_warning = false;
 
-  for (uint16_t k=0, l=0; k < bmpsize; k++, l++) {
+  for (uint16_t l=0; l < parsedsize;) {
     switch (bmi.bmiHeader.biBitCount) {
     case 8:
-        tempcol = databuffer[k];
+        tempcol = databuffer[l];
         if (!use8 && tempcol > 0x0F) truncated_warning = true;
-        parsedbuffer[l] = databuffer[k];break;
+        parsedbuffer[l] = databuffer[l];
+        l++; //step 1 byte
+        break;
     case 4:
-        parsedbuffer[l+1] = databuffer[k]>>4;
-        tempcol = databuffer[k]>>4;
+        parsedbuffer[l+1] = databuffer[l/2]>>4;
+        tempcol = databuffer[l/2]>>4;
         if (!use8 && !use4 && tempcol > 0x03) truncated_warning = true;
-        parsedbuffer[l] = databuffer[k]&0x0F;
-        tempcol = databuffer[k];
+        parsedbuffer[l] = databuffer[l/2]&0x0F;
+        tempcol = databuffer[l/2];
         if (!use8 && !use4 && tempcol > 0x03) truncated_warning = true;
-        l++; break;
+        l+=2; //step 2 bytes
+        break;
     case 1:
-        parsedbuffer[l] =   (databuffer[k]>>0)&0x01;
-        parsedbuffer[l+1] = (databuffer[k]>>1)&0x01;
-        parsedbuffer[l+2] = (databuffer[k]>>2)&0x01;
-        parsedbuffer[l+3] = (databuffer[k]>>3)&0x01;
-        parsedbuffer[l+4] = (databuffer[k]>>4)&0x01;
-        parsedbuffer[l+5] = (databuffer[k]>>5)&0x01;
-        parsedbuffer[l+6] = (databuffer[k]>>6)&0x01;
-        parsedbuffer[l+7] = (databuffer[k]>>7)&0x01;
-        l += 7; break;
+        parsedbuffer[l] =   (databuffer[l/2]>>0)&0x01;
+        parsedbuffer[l+1] = (databuffer[l/2]>>1)&0x01;
+        parsedbuffer[l+2] = (databuffer[l/2]>>2)&0x01;
+        parsedbuffer[l+3] = (databuffer[l/2]>>3)&0x01;
+        parsedbuffer[l+4] = (databuffer[l/2]>>4)&0x01;
+        parsedbuffer[l+5] = (databuffer[l/2]>>5)&0x01;
+        parsedbuffer[l+6] = (databuffer[l/2]>>6)&0x01;
+        parsedbuffer[l+7] = (databuffer[l/2]>>7)&0x01;
+        l += 8; //step 8 bytes
+        break;
     }
   }
 
