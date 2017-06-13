@@ -136,6 +136,15 @@ int main(int argc, char * argv[])
 		fclose(infile);
 		exit(-1);
 	}
+
+	if (bmi.bmiHeader.biWidth%32 && bmi.bmiHeader.biBitCount == 1) {
+            printf("ERROR!\nPadding of 1-bit (monochrome) images is not yet supported\n");
+            printf("1-bit images need to have width that is divisible by 32!\n");
+            printf("Adjust size of source image.\n", padbytes);
+            fclose(infile);
+            exit(-1);
+	}
+
     if (bmi.bmiHeader.biBitCount != 8 && bmi.bmiHeader.biBitCount != 4 && bmi.bmiHeader.biBitCount != 1)
 	{
 		printf("Only 8bpp, 4bpp & 1bpp BMP files are supported\n");
@@ -246,15 +255,22 @@ int main(int argc, char * argv[])
 	fclose(infile);
 
   /** PARSING DATABUFFER to PURE BYTES (1-,4- bit sources to 8-bit) **/
-
+  uint16_t tempcol;
+  bool truncated_warning = false;
 
   for (uint16_t k=0, l=0; k < bmpsize; k++, l++) {
     switch (bmi.bmiHeader.biBitCount) {
     case 8:
+        tempcol = databuffer[k];
+        if (!use8 && tempcol > 0x0F) truncated_warning = true;
         parsedbuffer[l] = databuffer[k];break;
     case 4:
         parsedbuffer[l+1] = databuffer[k]>>4;
+        tempcol = databuffer[k]>>4;
+        if (!use8 && !use4 && tempcol > 0x03) truncated_warning = true;
         parsedbuffer[l] = databuffer[k]&0x0F;
+        tempcol = databuffer[k];
+        if (!use8 && !use4 && tempcol > 0x03) truncated_warning = true;
         l++; break;
     case 1:
         parsedbuffer[l] =   (databuffer[k]>>7)&0x01;
@@ -267,8 +283,8 @@ int main(int argc, char * argv[])
         parsedbuffer[l+7] = (databuffer[k]>>0)&0x01;
         l += 7; break;
     }
-
   }
+
 
   /** MIRROR ROWS HORIZONTALLY **/
 
@@ -319,6 +335,7 @@ int main(int argc, char * argv[])
 	fprintf(outfile,"#include <stdint.h>\n\n");
 
   /** SHOW PARSED DATA **/
+  #ifdef SHOW_PARSED
   for (uint32_t j=0, l=0; j<bmi.bmiHeader.biHeight; j++) {
     fprintf (outfile, "// ");
     for (uint16_t k=0; k<bmi.bmiHeader.biWidth; k++, l++) {
@@ -328,7 +345,7 @@ int main(int argc, char * argv[])
     }
     fprintf (outfile, "\n");
   }
-
+  #endif
 
   /** OUTPUT Palette data **/
   fprintf(outfile,"const uint16_t ");
@@ -344,6 +361,10 @@ int main(int argc, char * argv[])
     printf("The program will automatically IGNORE any colors used above this limit.\n");
   }
 
+  if (truncated_warning) {
+        printf("WARNING! \nYou have pixels in your image that use colors that are not in the output palette.\n");
+        printf("The image may not look right. Reduce number of image colors in the drawing program before converting.\n");
+  }
   /** OUTPUT Palette **/
   if (numcol>bmi.bmiHeader.biClrUsed) numcol = bmi.bmiHeader.biClrUsed;
   for (unsigned int c=0;c<numcol;c++) {
@@ -408,6 +429,7 @@ int main(int argc, char * argv[])
 fprintf (outfile, "};");
 free(databuffer);
 free(parsedbuffer);
+free(rowbuffer);
 fclose(outfile);
 
 return 0;
