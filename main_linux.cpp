@@ -34,6 +34,7 @@ typedef struct tagBITMAPFILEHEADER {
   int32_t  bfOffBits;
 } __attribute__((packed)) BITMAPFILEHEADER, *PBITMAPFILEHEADER;
 
+#define BI_RLE4 2
 typedef struct tagBITMAPINFOHEADER {
   int32_t biSize;
   int32_t  biWidth;
