@@ -1,4 +1,4 @@
-#define NOT_DEBUG 1 //true = command line arguments are active
+#define NOT_DEBUG 0 //true = command line arguments are active
 
 int main(int argc, char * argv[])
 {
@@ -127,36 +127,53 @@ int main(int argc, char * argv[])
 
 
 
-  uint16_t test = sizeof(bmi.bmiHeader);
-  if (fread(&bmi,test,1,infile) == 1)
-    {
-	if (bf.bfType != 0x4D42) {
-        printf("Bitmap file has an unrecognized format (4D42 id missing from beginning).\n");
-        printf("BMP2POK accepts .BMP files that have an indexed (1,-bit, 4-bit or 8-bit) color palette.\n");
-		fclose(infile);
-		exit(-1);
-	}
-
-	if (bmi.bmiHeader.biWidth%32 && bmi.bmiHeader.biBitCount == 1) {
-            printf("ERROR!\nPadding of 1-bit (monochrome) images is not yet supported\n");
-            printf("1-bit images need to have width that is divisible by 32!\n");
-            printf("Adjust size of source image.\n", padbytes);
+    uint16_t test = sizeof(bmi.bmiHeader);
+    if (fread(&bmi,test,1,infile) == 1){
+        if (bf.bfType != 0x4D42) {
+            printf("Bitmap file has an unrecognized format (4D42 id missing from beginning).\n");
+            printf("BMP2POK accepts .BMP files that have an indexed (1,-bit, 4-bit or 8-bit) color palette.\n");
             fclose(infile);
             exit(-1);
-	}
+        }
 
-    if (bmi.bmiHeader.biBitCount != 8 && bmi.bmiHeader.biBitCount != 4 && bmi.bmiHeader.biBitCount != 1)
-	{
-		printf("Only 8bpp, 4bpp & 1bpp BMP files are supported\n");
-		fclose(infile);
+        if (bmi.bmiHeader.biWidth%32 && bmi.bmiHeader.biBitCount == 1) {
+                printf("ERROR!\nPadding of 1-bit (monochrome) images is not yet supported\n");
+                printf("1-bit images need to have width that is divisible by 32!\n");
+                printf("Adjust size of source image.\n", padbytes);
+                fclose(infile);
+                exit(-1);
+        }
 
-		exit(-1);
-	}
+        if (bmi.bmiHeader.biBitCount != 8 && bmi.bmiHeader.biBitCount != 4 && bmi.bmiHeader.biBitCount != 1)
+        {
+            printf("Only 8bpp, 4bpp & 1bpp BMP files are supported\n");
+            fclose(infile);
+
+            exit(-1);
+        }
+
+        if (bmi.bmiHeader.biCompression != 0 &&
+            !(bmi.bmiHeader.biCompression == BI_RLE4 && bmi.bmiHeader.biBitCount == 4))
+        {
+            printf("Only RLE compression for bitmaps with 4 bpp is supported\n");
+            fclose(infile);
+
+            exit(-1);
+        }
+
         int c = bmi.bmiHeader.biClrUsed;
         if (c==0) c = 1 << bmi.bmiHeader.biBitCount; // from MS BMP specs. 0 means 2^n colors
         bmi.bmiHeader.biClrUsed = c;
         printf("Number of colours used: %d\n", c);
         printf("Bits per pixel: %d\n", bmi.bmiHeader.biBitCount);
+        printf("Size in pixels: %d x %d\n", bmi.bmiHeader.biWidth, bmi.bmiHeader.biHeight );
+        int uncompsize = bmi.bmiHeader.biWidth * bmi.bmiHeader.biHeight*bmi.bmiHeader.biBitCount/8;
+        printf("Size in bytes: %d\n", uncompsize );
+       if (bmi.bmiHeader.biCompression == BI_RLE4) {
+            printf("RLE compression for 4 bpp used.\n");
+            int compsize = bmi.bmiHeader.biSizeImage;
+            printf("RLE compressed size in bytes: %d (%1.2f %%)\n", compsize, 100*compsize/(float)uncompsize );
+        }
         //fread(&bmi.bmiColors[0],c*4,1,infile);
         /* seek to the beginning of the color table - because of gimp */
         fseek(infile, bf.bfOffBits-c*4, SEEK_SET); //gfx data star minus color table
@@ -194,7 +211,8 @@ int main(int argc, char * argv[])
 
 
 	/** ALLOCATE buffer storage **/
-	bmpsize = bmi.bmiHeader.biWidth * bmi.bmiHeader.biHeight*bmi.bmiHeader.biBitCount/8;
+	if (bmi.bmiHeader.biCompression == BI_RLE4) bmpsize = bmi.bmiHeader.biSizeImage;
+    else bmpsize = bmi.bmiHeader.biWidth * bmi.bmiHeader.biHeight*bmi.bmiHeader.biBitCount/8;
 	parsedsize = bmi.bmiHeader.biWidth * bmi.bmiHeader.biHeight ;
 	if (bmi.bmiHeader.biWidth%4) {
             padbytes = bmi.bmiHeader.biWidth%4;
@@ -211,9 +229,9 @@ int main(int argc, char * argv[])
             padbytes=2;
 	}
 
-	databuffer = (unsigned char *) malloc(parsedsize);
+	databuffer = (unsigned char *) malloc(parsedsize);  // TODO should use bmpsize instead?
 	parsedbuffer = (unsigned char *) malloc (parsedsize);
-  rowbuffer = (unsigned char*) malloc (bmi.bmiHeader.biWidth);
+    rowbuffer = (unsigned char*) malloc (bmi.bmiHeader.biWidth);
 
 	if (databuffer == NULL)
 	{
@@ -222,13 +240,21 @@ int main(int argc, char * argv[])
 		exit(-1);
 	}
 
-  /** SEEK to the beginning of the data **/
+    /** SEEK to the beginning of the data **/
 	fseek(infile, bf.bfOffBits, SEEK_SET);
 
 	/** READ DATA into array, IGNORE BMP PADDING **/
 	int padcounter = bmi.bmiHeader.biWidth+padbytes;
 	if (bmi.bmiHeader.biBitCount==4) padcounter = bmi.bmiHeader.biWidth/2+padbytes;
-	fillindex = bmpsize - 1;
+	int increment = 0;
+	if (bmi.bmiHeader.biCompression == BI_RLE4) {
+        fillindex = 0;
+        increment = 1;
+        padbytes = 0;
+	} else {
+        fillindex = bmpsize - 1;
+        increment = -1;
+	}
 	i = 0;
 	while (i < bmpsize)
     {
@@ -246,19 +272,19 @@ int main(int argc, char * argv[])
         if (padbytes) {
             /* there are padding bytes */
             if (bmi.bmiHeader.biBitCount==4) {
-              if (padcounter > padbytes) {
-                /*not in padding section, so store */
-                databuffer[fillindex]=rgb;
-                fillindex--;
-                i++;
+                if (padcounter > padbytes) {
+                    /*not in padding section, so store */
+                    databuffer[fillindex]=rgb;
+                    fillindex--;
+                    i++;
                 }
             } else {
-              if (padcounter>padbytes) {
-                /*not in padding section yet, so store */
-                databuffer[fillindex]=rgb;
-                fillindex--;
-                i++;
-            }
+                if (padcounter>padbytes) {
+                    /*not in padding section yet, so store */
+                    databuffer[fillindex]=rgb;
+                    fillindex--;
+                    i++;
+                }
             }
             padcounter--;
             if (padcounter==0 && bmi.bmiHeader.biBitCount == 4 ) padcounter = bmi.bmiHeader.biWidth/2 + padbytes; // reset padvounter at each line
@@ -266,7 +292,7 @@ int main(int argc, char * argv[])
         } else {
             /* no need to worry about padding */
             databuffer[fillindex]=rgb;
-            fillindex--;
+            fillindex = fillindex + increment;
             i++;
         }
 
@@ -278,44 +304,46 @@ int main(int argc, char * argv[])
   uint16_t tempcol;
   bool truncated_warning = false;
 
-  for (uint16_t l=0; l < parsedsize;) {
-    switch (bmi.bmiHeader.biBitCount) {
-    case 8:
-        tempcol = databuffer[l];
-        if (!use8 && tempcol > 0x0F) truncated_warning = true;
-        parsedbuffer[l] = databuffer[l];
-        l++; //step 1 byte
-        break;
-    case 4:
-        parsedbuffer[l+1] = databuffer[l/2]>>4;
-        tempcol = databuffer[l/2]>>4;
-        if (!use8 && !use4 && tempcol > 0x03) truncated_warning = true;
-        parsedbuffer[l] = databuffer[l/2]&0x0F;
-        tempcol = databuffer[l/2];
-        if (!use8 && !use4 && tempcol > 0x03) truncated_warning = true;
-        l+=2; //step 2 bytes
-        break;
-    case 1:
-        parsedbuffer[l] =   (databuffer[l/2]>>0)&0x01;
-        parsedbuffer[l+1] = (databuffer[l/2]>>1)&0x01;
-        parsedbuffer[l+2] = (databuffer[l/2]>>2)&0x01;
-        parsedbuffer[l+3] = (databuffer[l/2]>>3)&0x01;
-        parsedbuffer[l+4] = (databuffer[l/2]>>4)&0x01;
-        parsedbuffer[l+5] = (databuffer[l/2]>>5)&0x01;
-        parsedbuffer[l+6] = (databuffer[l/2]>>6)&0x01;
-        parsedbuffer[l+7] = (databuffer[l/2]>>7)&0x01;
-        l += 8; //step 8 bytes
-        break;
-    }
-  }
+  if (bmi.bmiHeader.biCompression == 0)  // do not do for RLE compressed data
+      for (uint16_t l=0; l < parsedsize;) {
+        switch (bmi.bmiHeader.biBitCount) {
+        case 8:
+            tempcol = databuffer[l];
+            if (!use8 && tempcol > 0x0F) truncated_warning = true;
+            parsedbuffer[l] = databuffer[l];
+            l++; //step 1 byte
+            break;
+        case 4:
+            parsedbuffer[l+1] = databuffer[l/2]>>4;
+            tempcol = databuffer[l/2]>>4;
+            if (!use8 && !use4 && tempcol > 0x03) truncated_warning = true;
+            parsedbuffer[l] = databuffer[l/2]&0x0F;
+            tempcol = databuffer[l/2];
+            if (!use8 && !use4 && tempcol > 0x03) truncated_warning = true;
+            l+=2; //step 2 bytes
+            break;
+        case 1:
+            parsedbuffer[l] =   (databuffer[l/2]>>0)&0x01;
+            parsedbuffer[l+1] = (databuffer[l/2]>>1)&0x01;
+            parsedbuffer[l+2] = (databuffer[l/2]>>2)&0x01;
+            parsedbuffer[l+3] = (databuffer[l/2]>>3)&0x01;
+            parsedbuffer[l+4] = (databuffer[l/2]>>4)&0x01;
+            parsedbuffer[l+5] = (databuffer[l/2]>>5)&0x01;
+            parsedbuffer[l+6] = (databuffer[l/2]>>6)&0x01;
+            parsedbuffer[l+7] = (databuffer[l/2]>>7)&0x01;
+            l += 8; //step 8 bytes
+            break;
+        }
+      }
 
 
   /** MIRROR ROWS HORIZONTALLY **/
 
-  for (uint16_t l=0; l < bmi.bmiHeader.biHeight; l++) {
-        for (uint16_t m=0; m < bmi.bmiHeader.biWidth; m++) rowbuffer[m] = parsedbuffer[m+l*bmi.bmiHeader.biWidth];
-        for (uint16_t m=0; m < bmi.bmiHeader.biWidth; m++) parsedbuffer[m+l*bmi.bmiHeader.biWidth] = rowbuffer[bmi.bmiHeader.biWidth -1 - m];
-    }
+    if (bmi.bmiHeader.biCompression == 0)  // do not do for RLE compressed data
+        for (uint16_t l=0; l < bmi.bmiHeader.biHeight; l++) {
+            for (uint16_t m=0; m < bmi.bmiHeader.biWidth; m++) rowbuffer[m] = parsedbuffer[m+l*bmi.bmiHeader.biWidth];
+            for (uint16_t m=0; m < bmi.bmiHeader.biWidth; m++) parsedbuffer[m+l*bmi.bmiHeader.biWidth] = rowbuffer[bmi.bmiHeader.biWidth -1 - m];
+        }
 
 
   /** FLIP ROWS for 4-BIT IMAGE SOURCES **/
@@ -348,8 +376,10 @@ int main(int argc, char * argv[])
 
   if (use8) fprintf (outfile,
 	"\n\n/*\n * BMP image as 8bpp (up to 256 color index) data\n");
-  else if (use4) fprintf (outfile,
-  "\n\n/*\n * BMP image as 4bpp (16 color index) data\n");
+  else if (use4 && bmi.bmiHeader.biCompression == 0) fprintf (outfile,
+    "\n\n/*\n * BMP image as 4bpp (16 color index) data\n");
+  else if (use4 && bmi.bmiHeader.biCompression == BI_RLE4) fprintf (outfile,
+    "\n\n/*\n * BMP image as RLE4 compressed 4bpp (16 color index) data\n");
   else if (use2) fprintf (outfile,
 	"\n\n/*\n * BMP image as 2bpp (4 color) data\n");
 	else if (use1) fprintf (outfile,
@@ -360,7 +390,8 @@ int main(int argc, char * argv[])
 
   /** SHOW PARSED DATA **/
   #ifdef SHOW_PARSED
-  for (uint32_t j=0, l=0; j<bmi.bmiHeader.biHeight; j++) {
+  if (bmi.bmiHeader.biCompression == 0)
+    for (uint32_t j=0, l=0; j<bmi.bmiHeader.biHeight; j++) {
     fprintf (outfile, "// ");
     for (uint16_t k=0; k<bmi.bmiHeader.biWidth; k++, l++) {
     unsigned char temp = parsedbuffer[l];
@@ -393,7 +424,7 @@ int main(int argc, char * argv[])
   if (numcol>bmi.bmiHeader.biClrUsed) numcol = bmi.bmiHeader.biClrUsed;
   for (unsigned int c=0;c<numcol;c++) {
     unsigned int r,g,b,o;
-    r = myColors[c].rgbRed >> 3; // 5 bits
+    r = myColors[c].rgbRed >> 3; // 5 bitshttps://github.com/pokitto/bmp2pok.git
     g = myColors[c].rgbGreen >> 2; // 6 bits
     b = myColors[c].rgbBlue >> 3; // 5 bits
     o = (r<<11)|(g<<5)|b;
@@ -411,43 +442,56 @@ int main(int argc, char * argv[])
     i = 0;
 
   /** OUTPUT Image data **/
-	while (i < parsedsize)
-	{
-	for (uint16_t b=0; b < bmi.bmiHeader.biWidth; b++, i++) {
-    if (use8) {
-      /** 256 Color output **/
-      if (parsedbuffer[i]<0x10) fprintf (outfile, "0x0%X,", (unsigned char)parsedbuffer[i]);
-      else fprintf (outfile, "0x%X,", parsedbuffer[i]);
-    } else if (use4) {
-      /** 16 Color output **/
-      unsigned char combined = (parsedbuffer[i] << 4) | (parsedbuffer[i+1] & 0x0F);
-      if (combined<0x10) fprintf (outfile, "0x0%X,", combined);
-      else fprintf (outfile, "0x%X,", combined);
-      b++; i++; // jump over next byte
-    } else if (use2) {
-      /** 4 Color output **/
-      unsigned char combined = (parsedbuffer[i] << 6) | (parsedbuffer[i+1] << 4) | (parsedbuffer[i+2] << 2) | (parsedbuffer[i+3]);
-      if (combined<0x10) fprintf (outfile, "0x0%X,", combined);
-      else fprintf (outfile, "0x%X,", combined);
-      b+=3; i+=3; // jump over next 3 bytes
-    } else if (use1) {
-      /** 2 Color output - horizontal input bits are packed vertically !**/
-      unsigned char combined = (parsedbuffer[i] << 7) | \
-                               (parsedbuffer[i+1 * bmi.bmiHeader.biWidth] << 6) | \
-                               (parsedbuffer[i+2 * bmi.bmiHeader.biWidth] << 5) | \
-                               (parsedbuffer[i+3 * bmi.bmiHeader.biWidth] << 4) | \
-                               (parsedbuffer[i+4 * bmi.bmiHeader.biWidth] << 3) | \
-                               (parsedbuffer[i+5 * bmi.bmiHeader.biWidth] << 2) | \
-                               (parsedbuffer[i+6 * bmi.bmiHeader.biWidth] << 1) | \
-                               (parsedbuffer[i+7 * bmi.bmiHeader.biWidth]);
-      if (combined<0x10) fprintf (outfile, "0x0%X,", combined);
-      else fprintf (outfile, "0x%X,", combined);
-      b+=7; // add 1+7 bytes processed to counter
+  if (bmi.bmiHeader.biCompression == BI_RLE4) {
+    while (i < bmpsize) {
+          /** 16 Color output, RLE compressed **/
+        if (databuffer[i]<0x10) fprintf (outfile, "0x0%X,", databuffer[i]);
+        else fprintf (outfile, "0x%X,", databuffer[i]);
+
+        if ((i % 10) == 0 ) // new line after 10 bytes
+            fprintf (outfile, "\n");
+
+        i++;
     }
-	}
-	fprintf (outfile, "\n");
-	if (use1) i += bmi.bmiHeader.biWidth;
-    }
+    fprintf (outfile, "\n");
+  } else {
+    while (i < parsedsize) {
+        for (uint16_t b=0; b < bmi.bmiHeader.biWidth; b++, i++) {
+            if (use8) {
+                /** 256 Color output **/
+                if (parsedbuffer[i]<0x10) fprintf (outfile, "0x0%X,", (unsigned char)parsedbuffer[i]);
+                else fprintf (outfile, "0x%X,", parsedbuffer[i]);
+            } else if (use4) {
+                /** 16 Color output **/
+                unsigned char combined = (parsedbuffer[i] << 4) | (parsedbuffer[i+1] & 0x0F);
+                if (combined<0x10) fprintf (outfile, "0x0%X,", combined);
+                else fprintf (outfile, "0x%X,", combined);
+                b++; i++; // jump over next byte
+            } else if (use2) {
+                /** 4 Color output **/
+                unsigned char combined = (parsedbuffer[i] << 6) | (parsedbuffer[i+1] << 4) | (parsedbuffer[i+2] << 2) | (parsedbuffer[i+3]);
+                if (combined<0x10) fprintf (outfile, "0x0%X,", combined);
+                else fprintf (outfile, "0x%X,", combined);
+                b+=3; i+=3; // jump over next 3 bytes
+            } else if (use1) {
+                /** 2 Color output - horizontal input bits are packed vertically !**/
+                unsigned char combined = (parsedbuffer[i] << 7) | \
+                                       (parsedbuffer[i+1 * bmi.bmiHeader.biWidth] << 6) | \
+                                       (parsedbuffer[i+2 * bmi.bmiHeader.biWidth] << 5) | \
+                                       (parsedbuffer[i+3 * bmi.bmiHeader.biWidth] << 4) | \
+                                       (parsedbuffer[i+4 * bmi.bmiHeader.biWidth] << 3) | \
+                                       (parsedbuffer[i+5 * bmi.bmiHeader.biWidth] << 2) | \
+                                       (parsedbuffer[i+6 * bmi.bmiHeader.biWidth] << 1) | \
+                                       (parsedbuffer[i+7 * bmi.bmiHeader.biWidth]);
+                if (combined<0x10) fprintf (outfile, "0x0%X,", combined);
+                else fprintf (outfile, "0x%X,", combined);
+                b+=7; // add 1+7 bytes processed to counter
+            }
+        }  // end for
+        fprintf (outfile, "\n");
+        if (use1) i += bmi.bmiHeader.biWidth;
+    }  // end while
+  }
 
 /** FINALIZE **/
 fprintf (outfile, "};");
